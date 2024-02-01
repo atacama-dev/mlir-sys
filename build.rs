@@ -7,7 +7,11 @@ use std::{
     str,
 };
 
+#[cfg(feature = "llvm17-0")]
 const LLVM_MAJOR_VERSION: usize = 17;
+
+#[cfg(feature = "llvm19-0")]
+const LLVM_MAJOR_VERSION: usize = 19;
 
 fn main() {
     if let Err(error) = run() {
