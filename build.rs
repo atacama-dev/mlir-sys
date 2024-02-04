@@ -7,12 +7,6 @@ use std::{
     str,
 };
 
-#[cfg(feature = "llvm17-0")]
-const LLVM_MAJOR_VERSION: usize = 17;
-
-#[cfg(feature = "llvm19-0")]
-const LLVM_MAJOR_VERSION: usize = 19;
-
 fn main() {
     if let Err(error) = run() {
         eprintln!("{}", error);
@@ -20,13 +14,27 @@ fn main() {
     }
 }
 
+const LLVM_VERSIONS: [u16; 4] = [16, 17, 18, 19];
+
 fn run() -> Result<(), Box<dyn Error>> {
     let version = llvm_config("--version")?;
 
-    if !version.starts_with(&format!("{}.", LLVM_MAJOR_VERSION)) {
+    let version: Vec<_> = version.split('.').collect();
+
+    let version_major: u16 = match version[0].parse() {
+        Ok(major) => major,
+        Err(_err) => {
+            return Err(format!(
+                "failed to get version from llvm-config (consider setting LLVM_PREFIX)",
+            )
+            .into());
+        }
+    };
+
+    if !LLVM_VERSIONS.contains(&version_major) {
         return Err(format!(
-            "failed to find correct version ({}.x.x) of llvm-config (found {})",
-            LLVM_MAJOR_VERSION, version
+            "failed to find correct version ({:?}.x.x) of llvm-config (found {})",
+            LLVM_VERSIONS, version_major
         )
         .into());
     }
@@ -116,7 +124,7 @@ fn get_system_libcpp() -> Option<&'static str> {
 }
 
 fn llvm_config(argument: &str) -> Result<String, Box<dyn Error>> {
-    let prefix = env::var(format!("MLIR_SYS_{}0_PREFIX", LLVM_MAJOR_VERSION))
+    let prefix = env::var("LLVM_PREFIX")
         .map(|path| Path::new(&path).join("bin"))
         .unwrap_or_default();
     let call = format!(
